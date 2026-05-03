@@ -1,0 +1,15 @@
+name: gpu-monitor
+services:
+  gpu-monitor:
+    build: .
+    ports:
+      - "10101:10101"
+    pid: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
