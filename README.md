@@ -73,3 +73,4 @@ docker compose up -d
 By default, `nvidia-smi` inside a container can only see processes running inside that container — meaning your host GPU processes (games, encoding jobs, ML training, etc.) would show as invisible. The `--pid=host` flag shares the host's process namespace with the container so all GPU activity is visible regardless of where it's running.
 
 ---
+(this is a 100% vibe coded project)
