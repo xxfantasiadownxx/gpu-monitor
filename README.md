@@ -93,7 +93,7 @@ Since the container exposes a JSON API, you can pull GPU stats directly into Hom
 Add to `rest.yaml`:
 
 ```yaml
-  - resource: "http://192.168.0.120:10101/api/gpu"
+  - resource: "http://[your-ip]:10101/api/gpu"
     scan_interval: 10
     sensor:
       - name: "GPU Name"
