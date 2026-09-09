@@ -90,81 +90,110 @@ sudo systemctl restart docker
 
 Since the container exposes a JSON API, you can pull GPU stats directly into Home Assistant using the REST sensor integration.
 
-Add to `configuration.yaml`:
+Add to `rest.yaml`:
 
 ```yaml
-sensor:
-  - platform: rest
-    name: GPU
-    resource: http://YOUR_SERVER_IP:10101/api/gpu/simple
-    scan_interval: 5
-    value_template: "{{ value_json.gpu_util }}"
-    json_attributes:
-      - mem_used
-      - mem_total
-      - temperature
-      - power
-      - fan
-      - process_count
-      - processes
+  - resource: "http://192.168.0.120:10101/api/gpu"
+    scan_interval: 10
+    sensor:
+      - name: "GPU Name"
+        unique_id: gpu_name
+        value_template: "{{ value_json.gpus[0].name }}"
+
+      - name: "GPU Utilization"
+        unique_id: gpu_utilization
+        value_template: "{{ value_json.gpus[0].gpu_utilization.split(' ')[0] }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+
+      - name: "GPU Memory Utilization"
+        unique_id: gpu_memory_utilization
+        value_template: "{{ value_json.gpus[0].memory_utilization.split(' ')[0] }}"
+        unit_of_measurement: "%"
+        state_class: measurement
+
+      - name: "GPU Memory Total"
+        unique_id: gpu_memory_total
+        value_template: "{{ value_json.gpus[0].memory_total.split(' ')[0] }}"
+        unit_of_measurement: "MiB"
+        state_class: measurement
+
+      - name: "GPU Memory Used"
+        unique_id: gpu_memory_used
+        value_template: "{{ value_json.gpus[0].memory_used.split(' ')[0] }}"
+        unit_of_measurement: "MiB"
+        state_class: measurement
+
+      - name: "GPU Memory Free"
+        unique_id: gpu_memory_free
+        value_template: "{{ value_json.gpus[0].memory_free.split(' ')[0] }}"
+        unit_of_measurement: "MiB"
+        state_class: measurement
+
+      - name: "GPU Temperature"
+        unique_id: gpu_temperature
+        value_template: "{{ value_json.gpus[0].temperature.split(' ')[0] }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+
+      - name: "GPU Power Draw"
+        unique_id: gpu_power_draw
+        value_template: >-
+          {% set v = value_json.gpus[0].power_draw %}
+          {{ v.split(' ')[0] if v != 'N/A' else 'unknown' }}
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+
+      - name: "GPU Power Limit"
+        unique_id: gpu_power_limit
+        value_template: >-
+          {% set v = value_json.gpus[0].power_limit %}
+          {{ v.split(' ')[0] if v != 'N/A' else 'unknown' }}
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+
+      - name: "GPU Fan Speed"
+        unique_id: gpu_fan_speed
+        value_template: >-
+          {% set v = value_json.gpus[0].fan_speed %}
+          {{ v.split(' ')[0] if v != 'N/A' else 'unknown' }}
+        unit_of_measurement: "%"
+        state_class: measurement
+
+      - name: "GPU SM Clock"
+        unique_id: gpu_sm_clock
+        value_template: "{{ value_json.gpus[0].sm_clock.split(' ')[0] }}"
+        unit_of_measurement: "MHz"
+        state_class: measurement
+
+      - name: "GPU Memory Clock"
+        unique_id: gpu_mem_clock
+        value_template: "{{ value_json.gpus[0].mem_clock.split(' ')[0] }}"
+        unit_of_measurement: "MHz"
+        state_class: measurement
+
+      - name: "GPU Driver Version"
+        unique_id: gpu_driver_version
+        value_template: "{{ value_json.gpus[0].driver_version }}"
+
+      - name: "GPU CUDA Version"
+        unique_id: gpu_cuda_version
+        value_template: "{{ value_json.gpus[0].cuda_version }}"
+
+      - name: "GPU Process Count"
+        unique_id: gpu_process_count
+        value_template: "{{ value_json.gpus[0].processes | length }}"
+        state_class: measurement
+
+      - name: "GPU Processes"
+        unique_id: gpu_processes
+        value_template: >-
+          {% set procs = value_json.gpus[0].processes %}
+          {{ procs | map(attribute='display') | join(', ') if procs else 'Idle' }}
 ```
-
-Dashboard Markdown card:
-
-```yaml
-type: markdown
-title: GPU Monitor
-content: >
-  **Utilization:** {{ state_attr('sensor.gpu', 'gpu_util') }}
-  **Temp:** {{ state_attr('sensor.gpu', 'temperature') }}
-  **Memory:** {{ state_attr('sensor.gpu', 'mem_used') }} / {{ state_attr('sensor.gpu', 'mem_total') }}
-  **Power:** {{ state_attr('sensor.gpu', 'power') }}
-  **Fan:** {{ state_attr('sensor.gpu', 'fan') }}
-
-  **Active Processes:**
-  {{ state_attr('sensor.gpu', 'processes') }}
-```
-
----
-
-## API Endpoints
-
-| Endpoint | Description |
-|---|---|
-| `GET /` | Redirects to the dashboard |
-| `GET /gpu_monitor.html` | Live dashboard UI |
-| `GET /api/gpu` | Full GPU data as JSON |
-
-### Example response from `/api/gpu`
-
-```json
-{
-  "gpus": [
-    {
-      "id": "0",
-      "name": "NVIDIA GeForce GTX 1660 Ti",
-      "gpu_utilization": "54 %",
-      "memory_used": "3200 MiB",
-      "memory_total": "6144 MiB",
-      "temperature": "72 C",
-      "power_draw": "89.5 W",
-      "fan_speed": "65 %",
-      "sm_clock": "1845 MHz",
-      "processes": [
-        {
-          "pid": "12345",
-          "name": "/usr/bin/ffmpeg",
-          "type": "C",
-          "used_memory": "1200 MiB"
-        }
-      ]
-    }
-  ],
-  "timestamp": "2026-05-03T16:23:18.477968"
-}
-```
-
----
 
 ## Building from Source
 
@@ -174,18 +203,6 @@ cd gpu-monitor
 docker build -t gpu-monitor .
 docker run --gpus all --pid=host -p 10101:10101 gpu-monitor
 ```
-
----
-
-## Firewall
-
-If accessing from another machine on your network, make sure port `10101` is open:
-
-```bash
-sudo ufw allow 10101
-```
-
----
 
 ## License
 
